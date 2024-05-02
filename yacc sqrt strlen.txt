@@ -1,0 +1,129 @@
+38
+
+(C)11.Write a program to evaluate a given built-in functions using YACC specification.
+INPUT
+1.u= sqrt(36)
+2. v = strlen(“pune”)
+------------------------------
+https://chat.openai.com/c/b88d3ded-aa98-4a1f-b561-e29614d1e317
+-------------------------------------------------------------
+.y file
+
+%{
+#include <stdio.h>
+#include <math.h>
+#include <string.h>
+extern int yylex();
+extern FILE *yyin;
+%}
+
+%token NUM STR IDENT
+%left '-' '+'
+%left '*' '/'
+%right '^'
+%type <value> expression
+
+%%
+
+statement_list : statement_list statement
+               | statement
+               ;
+
+statement : IDENT '=' expression '\n' {
+                printf("%s = %lf\n", $1, $3);
+           }
+          ;
+
+expression : NUM 
+           | STR 
+           | IDENT 
+           | IDENT '(' expression ')' {
+                $$ = eval_function($1, $3);
+           }
+           | '(' expression ')' 
+           | expression '+' expression { $$ = $1 + $3; }
+           | expression '-' expression { $$ = $1 - $3; }
+           | expression '*' expression { $$ = $1 * $3; }
+           | expression '/' expression { $$ = $1 / $3; }
+           | expression '^' expression { $$ = pow($1, $3); }
+           ;
+
+%%
+
+double eval_function(char *func_name, double arg) {
+    if (strcmp(func_name, "sqrt") == 0) {
+        return sqrt(arg);
+    } else if (strcmp(func_name, "strlen") == 0) {
+        return strlen((char *)&arg);
+    }
+    return 0;
+}
+
+int yyerror(char *s) {
+    printf("Error: %s\n", s);
+    return 0;
+}
+
+int main(int argc, char *argv[]) {
+    if (argc > 1) {
+        yyin = fopen(argv[1], "r");
+        if (!yyin) {
+            printf("File not found!\n");
+            return 1;
+        }
+    }
+    yyparse();
+    return 0;
+}
+------------------------
+.l file
+%{
+#include "functions.tab.h"
+%}
+
+%%
+
+[ \t]+          /* ignore whitespace */ ;
+
+[0-9]+(\.[0-9]+)? {
+                    yylval = atof(yytext);
+                    return NUM;
+                  }
+
+\"[^\"\n]*\"    {
+                    yylval = strdup(yytext);
+                    return STR;
+                  }
+
+[a-zA-Z_][a-zA-Z_0-9]* {
+                            yylval = strdup(yytext);
+                            return IDENT;
+                        }
+
+[=\n]             { return yytext[0]; }
+
+.               { return yytext[0]; }
+
+%%
+
+int yywrap(void) {
+    return 1;
+}
+----------------
+yacc -d functions.y
+lex functions.l
+gcc lex.yy.c functions.tab.c -o evaluate_functions -lm
+-------------
+u= sqrt(36)
+v = strlen("pune")
+in a input file
+----------------
+./evaluate_functions < input_file.txt
+-------------
+to change the directory:
+cd ~/Desktop
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
+
+
